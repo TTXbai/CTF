@@ -1,40 +1,40 @@
-#pwn:tcache学习
-##1.简介
+# pwn:tcache学习
+## 1.简介
 libc2.27以后的版本中引入了tcache机制，使得堆的安全管理更加薄弱，在这里记录一下我在CTF比赛中学习到的tcache相关的知识和技巧。
 
-##2.例题
+## 2.例题
 简要介绍以下这个二进制文件，形式为一个正常堆题，但使用的是libc2.27，因此考察的是对tcache进行利用
 
 分析一下程序功能
-####add
+#### add
 ![](./pic/add.png)
 
 函数的功能为申请一段0XF8的空间，并给读入指定的size和输入。
 在这里，get_input()函数有一个off by null漏洞
 
-####delete
+#### delete
 ![](./pic/delete.png)
 
 函数的功能为free一个指定的list，但由于其没有对指针清零，有一个UAF漏洞。同时，注意到index有负数越界的漏洞，但其实这个并没有很大的作用
 
-####modify
+#### modify
 ![](./pic/modify.png)
 
 函数的功能为对指定的list进行修改，这里同样也有负数越界，但是很难在程序段和bss段中找到合适的地址
 
-####show
+#### show
 ![](./pic/show.png)
 
 这里对指定的list进行打印，同样也有负数越界
 
-####利用思路
+#### 利用思路
 
-#####leak思路
+##### leak思路
 因为delete时没有清零，因此我们可以通过show一个free之后的chunk，从而leak出堆地址或libc地址
 
 ![](./pic/libc.png)
 
-#####getshell思路
+##### getshell思路
 1.我们可以通过off by null漏洞进行unsorted bin attack，利用堆合并的时候检查PREV-IN-USE位，覆盖正在使用的chunk，从而构造UAF。
 
 在这一步需要精心构造，此处需要使用7个tcache bin和3个unsorted bin
@@ -63,7 +63,7 @@ libc2.27以后的版本中引入了tcache机制，使得堆的安全管理更加
 
 2.我们可以通过off_by_null覆盖tcache\_prethread结构体中0x100链表的地址，使其能够直接覆盖堆地址，从而进一步控堆，使其malloc到\_\_free\_hook()中,成功getshell,这一步暂时没有实现
 
-####完整writeup
+#### 完整writeup
 
 	from pwn import *
 	
